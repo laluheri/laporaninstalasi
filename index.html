@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Instalasi Report</title>
+
+    <!-- html2pdf -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #eaeaea;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        /* ===== PAGE A4 ===== */
+        .page {
+            width: 210mm;
+            min-height: 297mm;
+            background: #fff;
+            margin: 8px auto;
+            padding: 10mm 15mm 15mm;
+            page-break-after: always;
+        }
+
+        /* ===== HEADER ===== */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            /* teks kiri - logo kanan */
+            align-items: center;
+        }
+
+        .header-title {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .logo img {
+            height: 50px;
+            /* ukuran logo tetap besar */
+            width: auto;
+        }
+
+        .header-line {
+            width: 100%;
+            height: 1.5px;
+            background: #b7c9ef;
+            margin: 4px 0 6px;
+        }
+
+        /* ===== DESCRIPTION ===== */
+        .desc {
+            font-size: 12px;
+            margin-bottom: 8px;
+            white-space: pre-line;
+        }
+
+        /* ===== PHOTO TITLE ===== */
+        .photo-title {
+            background: #d9e6fb;
+            text-align: center;
+            font-weight: bold;
+            padding: 4px;
+            margin-bottom: 6px;
+            font-size: 12px;
+        }
+
+        /* ===== GALLERY ===== */
+        .gallery {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6mm 8mm;
+        }
+
+        .photo-box {
+            border: 1px solid #999;
+            padding: 3mm;
+            font-size: 11px;
+        }
+
+        .photo-box img {
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            object-fit: cover;
+            border: 1px solid #ccc;
+        }
+
+        /* ===== CAPTION ===== */
+        .caption-select,
+        .caption-text {
+            width: 100%;
+            margin-top: 3mm;
+            border: none;
+            border-top: 1px solid #aaa;
+            padding: 2px;
+            font-size: 10.5px;
+            text-align: center;
+        }
+
+        /* ===== CONTROLS ===== */
+        .controls {
+            margin: 10px;
+            text-align: center;
+        }
+
+        textarea {
+            width: 100%;
+            height: 50px;
+            padding: 6px;
+        }
+
+        @media print {
+
+            .controls,
+            select,
+            input,
+            textarea {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- CONTROLS -->
+    <div class="controls" id="controls">
+        <textarea id="descInput" placeholder="Deskripsi pekerjaan..."></textarea><br><br>
+        <input type="file" id="imageInput" accept="image/*" multiple><br><br>
+        <button onclick="exportPDF()">Export PDF</button>
+    </div>
+
+    <!-- REPORT -->
+    <div id="report"></div>
+
+    <script>
+        const report = document.getElementById("report");
+        const input = document.getElementById("imageInput");
+
+        const captionList = [
+            "Pemasangan kabel FO udara single mode 2 core G652D (Drop Core)",
+            "Pemasangan kabel FO udara single mode 12 core G652D (ADSS)",
+            "Pengukuran jaringan menggunakan OTDR",
+            "Penyambungan kabel FO single mode 1 core (fusion splice)",
+            "Pemasangan joint closure FO kapasitas 12 core (tanpa splicing)",
+            "Pemasangan ODP tiang 8 core lengkap splitter 1:8 dan adaptor SC",
+            "Pemasangan roset / indoor optical outlet 1 port SC",
+            "Pemasangan tiang besi 7 meter lengkap pondasi dan aksesoris",
+            "Pemasangan slack pada tiang lengkap sabuk / klem",
+            "Pemasangan / penggantian / pencabutan / aktivasi modem atau ONT"
+        ];
+
+        let images = [];
+
+        input.addEventListener("change", e => {
+            for (let file of e.target.files) {
+                const reader = new FileReader();
+                reader.onload = ev => {
+                    images.push(ev.target.result);
+                    renderPages();
+                };
+                reader.readAsDataURL(file);
+            }
+            input.value = "";
+        });
+
+        function renderPages() {
+            report.innerHTML = "";
+            const desc = document.getElementById("descInput").value;
+
+            for (let i = 0; i < images.length; i += 6) {
+                const page = document.createElement("div");
+                page.className = "page";
+
+                page.innerHTML = `
+            <div class="header">
+                <div class="header-title">INSTALASI REPORT</div>
+                <div class="logo"><img src="lintasarta.png"></div>
+            </div>
+            <div class="header-line"></div>
+            <div class="desc">${desc}</div>
+            <div class="photo-title">PHOTO INSTALASI</div>
+            <div class="gallery"></div>
+        `;
+
+                const gallery = page.querySelector(".gallery");
+
+                images.slice(i, i + 6).forEach(src => {
+                    const box = document.createElement("div");
+                    box.className = "photo-box";
+
+                    const options = captionList.map(v => `<option value="${v}">${v}</option>`).join("");
+
+                    box.innerHTML = `
+                <img src="${src}">
+                <select class="caption-select">
+                    <option value="">-- Pilih keterangan foto --</option>
+                    ${options}
+                </select>
+            `;
+
+                    gallery.appendChild(box);
+                });
+
+                report.appendChild(page);
+            }
+        }
+
+        async function exportPDF() {
+            // ganti dropdown jadi teks
+            document.querySelectorAll(".caption-select").forEach(sel => {
+                const div = document.createElement("div");
+                div.className = "caption-text";
+                div.innerText = sel.value || "-";
+                sel.replaceWith(div);
+            });
+
+            document.getElementById("controls").style.display = "none";
+
+            await html2pdf().set({
+                margin: 0,
+                filename: "laporan_instalasi.pdf",
+                image: { type: "jpeg", quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
+            }).from(report).save();
+        }
+    </script>
+
+</body>
+
+</html>
