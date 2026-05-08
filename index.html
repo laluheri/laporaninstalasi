@@ -3,236 +3,611 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Instalasi Report</title>
-
-    <!-- html2pdf -->
+    <title>Instalasi Report Pro</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-
     <style>
-        * {
+        *,
+        *::before,
+        *::after {
             box-sizing: border-box;
         }
 
-        body {
-            background: #eaeaea;
-            font-family: Arial, Helvetica, sans-serif;
+        :root {
+            --blue: #1a4a9e;
+            --blue-light: #d9e6fb;
+            --blue-border: #b7c9ef;
+            --red: #d9534f;
+            --text: #333;
         }
 
-        /* ===== PAGE A4 ===== */
+        /* ============================
+           SCREEN STYLES
+        ============================ */
+        body {
+            background: #dde3ec;
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .controls {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background: #1e2d3d;
+            color: white;
+            padding: 16px 24px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .controls h2 {
+            margin: 0;
+            font-size: 16px;
+            letter-spacing: 1px;
+            white-space: nowrap;
+        }
+
+        .controls textarea {
+            flex: 1;
+            min-width: 220px;
+            height: 54px;
+            padding: 8px 10px;
+            border-radius: 5px;
+            border: none;
+            font-size: 12px;
+            resize: none;
+        }
+
+        .file-label {
+            background: #3b556e;
+            color: #fff;
+            padding: 9px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .file-label:hover {
+            background: #4e6f8e;
+        }
+
+        #imageInput {
+            display: none;
+        }
+
+        .btn-export {
+            padding: 10px 24px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .btn-export:hover {
+            background: #2ecc71;
+        }
+
+        .btn-export:disabled {
+            background: #666;
+            cursor: wait;
+        }
+
+        #pdf-wrapper {
+            width: 210mm;
+            margin: 20px auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* ============================
+           PAGE STYLES (screen + print)
+        ============================ */
         .page {
             width: 210mm;
-            min-height: 297mm;
+            /* Tinggi A4 dikurangi margins → 296.5mm - 20mm top - 15mm bot = 261.5mm */
+            /* Kita biarkan height auto, tapi batasi konten agar tidak meluap */
             background: #fff;
-            margin: 8px auto;
-            padding: 10mm 15mm 15mm;
-            page-break-after: always;
+            padding: 12mm 15mm 15mm;
+            position: relative;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
 
-        /* ===== HEADER ===== */
-        .header {
+        /* Header */
+        .page-header {
             display: flex;
             justify-content: space-between;
-            /* teks kiri - logo kanan */
             align-items: center;
+            flex-shrink: 0;
         }
 
         .header-title {
             font-size: 20px;
             font-weight: bold;
+            color: var(--blue);
+            letter-spacing: 1px;
         }
 
-        .logo img {
-            height: 50px;
-            /* ukuran logo tetap besar */
+        .logo-area {
+            font-size: 11px;
+            color: var(--blue);
+            font-weight: bold;
+            text-align: right;
+        }
+
+        .logo-area img {
+            height: 40px;
             width: auto;
+            display: block;
         }
 
         .header-line {
-            width: 100%;
-            height: 1.5px;
-            background: #b7c9ef;
-            margin: 4px 0 6px;
+            height: 3px;
+            background: var(--blue);
+            margin: 6px 0 8px;
+            flex-shrink: 0;
         }
 
-        /* ===== DESCRIPTION ===== */
-        .desc {
-            font-size: 12px;
+        .desc-box {
+            font-size: 11px;
+            line-height: 1.55;
+            color: var(--text);
+            padding: 8px 10px;
+            background: #f5f7fb;
+            border: 1px solid #e0e6f0;
+            border-left: 3px solid var(--blue);
+            white-space: pre-wrap;
             margin-bottom: 8px;
-            white-space: pre-line;
+            flex-shrink: 0;
         }
 
-        /* ===== PHOTO TITLE ===== */
-        .photo-title {
-            background: #d9e6fb;
+        .photo-banner {
+            background: var(--blue-light);
+            border: 1px solid var(--blue-border);
             text-align: center;
             font-weight: bold;
-            padding: 4px;
-            margin-bottom: 6px;
             font-size: 12px;
+            padding: 6px;
+            margin-bottom: 8px;
+            color: var(--blue);
+            flex-shrink: 0;
         }
 
-        /* ===== GALLERY ===== */
+        /* ============================
+           GALLERY — 3 baris × 2 kolom
+           Foto ukuran tetap agar pas A4
+        ============================ */
         .gallery {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 6mm 8mm;
+            /* 3 baris: foto + caption, tiap baris ±75mm */
+            grid-template-rows: repeat(3, auto);
+            gap: 6mm;
+            flex: 1;
         }
 
         .photo-box {
-            border: 1px solid #999;
+            border: 1px solid #ccc;
             padding: 3mm;
-            font-size: 11px;
+            background: #fff;
+            position: relative;
+            cursor: grab;
+        }
+
+        .photo-box.drag-over {
+            border: 2px dashed var(--blue);
+            background: #eef3fb;
+        }
+
+        .photo-box.dragging {
+            opacity: 0.45;
         }
 
         .photo-box img {
             width: 100%;
-            aspect-ratio: 4 / 3;
+            height: 56mm;
+            /* Tinggi foto tetap → pas A4 dengan 3 baris */
             object-fit: cover;
+            display: block;
+            border: 1px solid #e8e8e8;
+        }
+
+        .caption-area {
+            margin-top: 5px;
+            text-align: center;
+        }
+
+        /* Screen: dropdown */
+        .caption-select {
+            width: 100%;
+            padding: 5px 6px;
+            font-size: 10px;
             border: 1px solid #ccc;
+            border-radius: 3px;
         }
 
-        /* ===== CAPTION ===== */
-        .caption-select,
-        .caption-text {
-            width: 100%;
-            margin-top: 3mm;
-            border: none;
-            border-top: 1px solid #aaa;
-            padding: 2px;
-            font-size: 10.5px;
+        /* Print: teks keterangan */
+        .caption-print {
+            display: none;
+            font-size: 10px;
+            font-weight: bold;
+            color: var(--blue);
+            padding: 3px 0;
             text-align: center;
         }
 
-        /* ===== CONTROLS ===== */
-        .controls {
-            margin: 10px;
-            text-align: center;
+        /* Tombol hapus */
+        .btn-delete {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--red);
+            color: #fff;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 13px;
+            z-index: 5;
+            line-height: 1;
         }
 
-        textarea {
-            width: 100%;
-            height: 50px;
-            padding: 6px;
+        /* Placeholder kosong */
+        .photo-placeholder {
+            background: #f2f2f2;
+            border: 2px dashed #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 56mm;
+            color: #bbb;
+            font-size: 12px;
         }
 
+        /* ============================
+           PRINT / PDF STYLES
+        ============================ */
         @media print {
 
-            .controls,
-            select,
-            input,
-            textarea {
+            html,
+            body {
+                margin: 0;
+                padding: 0;
+                background: white;
+            }
+
+            .controls {
                 display: none !important;
             }
+
+            #pdf-wrapper {
+                width: 100%;
+                margin: 0;
+                gap: 0;
+            }
+
+            .page {
+                width: 210mm;
+                height: 297mm;
+                padding: 12mm 15mm 15mm;
+                box-shadow: none;
+                page-break-after: always;
+                break-after: page;
+                overflow: hidden;
+            }
+
+            .page:last-child {
+                page-break-after: avoid;
+                break-after: avoid;
+            }
+
+            .btn-delete {
+                display: none !important;
+            }
+
+            .caption-select {
+                display: none !important;
+            }
+
+            .caption-print {
+                display: block !important;
+            }
+        }
+
+        @page {
+            size: A4 portrait;
+            margin: 0;
         }
     </style>
 </head>
 
 <body>
 
-    <!-- CONTROLS -->
+    <!-- PANEL KONTROL -->
     <div class="controls" id="controls">
-        <textarea id="descInput" placeholder="Deskripsi pekerjaan..."></textarea><br><br>
-        <input type="file" id="imageInput" accept="image/*" multiple><br><br>
-        <button onclick="exportPDF()">Export PDF</button>
+        <h2>📋 PANEL LAPORAN</h2>
+        <textarea id="descInput" placeholder="Ketik deskripsi laporan... (muncul di setiap halaman)"></textarea>
+        <label class="file-label" for="imageInput">📷 Tambah Foto</label>
+        <input type="file" id="imageInput" accept="image/*" multiple>
+        <button class="btn-export" id="btnExport" onclick="exportPDF()">⬇ SIMPAN PDF</button>
     </div>
 
-    <!-- REPORT -->
-    <div id="report"></div>
+    <!-- AREA LAPORAN -->
+    <div id="pdf-wrapper"></div>
 
     <script>
-        const report = document.getElementById("report");
-        const input = document.getElementById("imageInput");
+        /* ============================================================
+           DATA & STATE
+        ============================================================ */
+        const PHOTOS_PER_PAGE = 6;
 
         const captionList = [
             "Pemasangan kabel FO udara single mode 2 core G652D (Drop Core)",
             "Pemasangan kabel FO udara single mode 12 core G652D (ADSS)",
             "Pengukuran jaringan menggunakan OTDR",
-            "Penyambungan kabel FO single mode 1 core (fusion splice)",
-            "Pemasangan joint closure FO kapasitas 12 core (tanpa splicing)",
-            "Pemasangan ODP tiang 8 core lengkap splitter 1:8 dan adaptor SC",
-            "Pemasangan roset / indoor optical outlet 1 port SC",
-            "Pemasangan tiang besi 7 meter lengkap pondasi dan aksesoris",
-            "Pemasangan slack pada tiang lengkap sabuk / klem",
-            "Pemasangan / penggantian / pencabutan / aktivasi modem atau ONT"
+            "Penyambungan kabel FO single mode (fusion splice)",
+            "Pemasangan joint closure FO 12 core",
+            "Pemasangan ODP tiang 8 core",
+            "Pemasangan roset / indoor outlet",
+            "Pemasangan tiang besi 7 meter",
+            "Pemasangan slack pada tiang",
+            "Aktivasi modem / ONT"
         ];
 
-        let images = [];
+        let images = []; // { id, src, caption }
+        let dragSrcId = null;
 
-        input.addEventListener("change", e => {
-            for (let file of e.target.files) {
+        /* ============================================================
+           INPUT FILE
+        ============================================================ */
+        document.getElementById("imageInput").addEventListener("change", e => {
+            const files = Array.from(e.target.files);
+            let loaded = 0;
+            files.forEach(file => {
                 const reader = new FileReader();
                 reader.onload = ev => {
-                    images.push(ev.target.result);
-                    renderPages();
+                    images.push({ id: uid(), src: ev.target.result, caption: "" });
+                    loaded++;
+                    if (loaded === files.length) render();
                 };
                 reader.readAsDataURL(file);
-            }
-            input.value = "";
+            });
+            e.target.value = "";
         });
 
-        function renderPages() {
-            report.innerHTML = "";
-            const desc = document.getElementById("descInput").value;
+        document.getElementById("descInput").addEventListener("input", render);
 
-            for (let i = 0; i < images.length; i += 6) {
+        function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+
+        /* ============================================================
+           RENDER
+        ============================================================ */
+        function render() {
+            const wrapper = document.getElementById("pdf-wrapper");
+            const desc = document.getElementById("descInput").value.trim() || "Laporan Hasil Instalasi Lapangan";
+            wrapper.innerHTML = "";
+
+            if (images.length === 0) {
+                wrapper.innerHTML = `
+            <div style="text-align:center;padding:60px;color:#888;font-size:14px;background:#fff;width:210mm;margin:0 auto;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.1)">
+                <div style="font-size:48px;margin-bottom:16px">📷</div>
+                <strong>Belum ada foto</strong><br>Klik "Tambah Foto" untuk mulai membuat laporan.
+            </div>`;
+                return;
+            }
+
+            const totalPages = Math.ceil(images.length / PHOTOS_PER_PAGE);
+
+            for (let p = 0; p < totalPages; p++) {
+                const chunk = images.slice(p * PHOTOS_PER_PAGE, (p + 1) * PHOTOS_PER_PAGE);
                 const page = document.createElement("div");
                 page.className = "page";
 
+                /* Header */
                 page.innerHTML = `
-            <div class="header">
+            <div class="page-header">
                 <div class="header-title">INSTALASI REPORT</div>
-                <div class="logo"><img src="lintasarta.png"></div>
+                <div class="logo-area">
+                    <img src="lintasarta.png" alt="Logo" onerror="this.style.display='none';this.parentNode.innerText='LINTASARTA'">
+                </div>
             </div>
             <div class="header-line"></div>
-            <div class="desc">${desc}</div>
-            <div class="photo-title">PHOTO INSTALASI</div>
-            <div class="gallery"></div>
+            <div class="desc-box">${escHtml(desc)}</div>
+            <div class="photo-banner">DOKUMENTASI FOTO — HALAMAN ${p + 1} / ${totalPages}</div>
         `;
 
-                const gallery = page.querySelector(".gallery");
+                /* Gallery */
+                const gallery = document.createElement("div");
+                gallery.className = "gallery";
 
-                images.slice(i, i + 6).forEach(src => {
-                    const box = document.createElement("div");
-                    box.className = "photo-box";
-
-                    const options = captionList.map(v => `<option value="${v}">${v}</option>`).join("");
-
-                    box.innerHTML = `
-                <img src="${src}">
-                <select class="caption-select">
-                    <option value="">-- Pilih keterangan foto --</option>
-                    ${options}
-                </select>
-            `;
-
+                chunk.forEach(img => {
+                    const box = buildPhotoBox(img);
                     gallery.appendChild(box);
                 });
 
-                report.appendChild(page);
+                /* Isi slot kosong agar grid tetap rapi */
+                const rem = chunk.length % 2;
+                if (rem !== 0 && chunk.length < PHOTOS_PER_PAGE) {
+                    const blank = document.createElement("div");
+                    blank.className = "photo-box";
+                    blank.innerHTML = `<div class="photo-placeholder">— Slot Kosong —</div>`;
+                    gallery.appendChild(blank);
+                }
+
+                page.appendChild(gallery);
+                wrapper.appendChild(page);
             }
         }
 
-        async function exportPDF() {
-            // ganti dropdown jadi teks
-            document.querySelectorAll(".caption-select").forEach(sel => {
-                const div = document.createElement("div");
-                div.className = "caption-text";
-                div.innerText = sel.value || "-";
-                sel.replaceWith(div);
+        /* ============================================================
+           PHOTO BOX
+        ============================================================ */
+        function buildPhotoBox(img) {
+            const box = document.createElement("div");
+            box.className = "photo-box";
+            box.dataset.id = img.id;
+            box.draggable = true;
+
+            /* Drag events */
+            box.addEventListener("dragstart", e => {
+                dragSrcId = img.id;
+                box.classList.add("dragging");
+                e.dataTransfer.effectAllowed = "move";
+            });
+            box.addEventListener("dragend", () => {
+                box.classList.remove("dragging");
+                document.querySelectorAll(".photo-box").forEach(b => b.classList.remove("drag-over"));
+            });
+            box.addEventListener("dragover", e => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                box.classList.add("drag-over");
+            });
+            box.addEventListener("dragleave", () => box.classList.remove("drag-over"));
+            box.addEventListener("drop", e => {
+                e.preventDefault();
+                box.classList.remove("drag-over");
+                if (dragSrcId && dragSrcId !== img.id) reorder(dragSrcId, img.id);
             });
 
-            document.getElementById("controls").style.display = "none";
+            /* Caption options */
+            const optionsHtml = captionList.map(c =>
+                `<option value="${escAttr(c)}" ${img.caption === c ? "selected" : ""}>${escHtml(c)}</option>`
+            ).join("");
 
-            await html2pdf().set({
-                margin: 0,
-                filename: "laporan_instalasi.pdf",
-                image: { type: "jpeg", quality: 0.98 },
-                html2canvas: { scale: 2 },
-                jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
-            }).from(report).save();
+            box.innerHTML = `
+        <button class="btn-delete" title="Hapus foto">✕</button>
+        <img src="${img.src}" alt="foto">
+        <div class="caption-area">
+            <select class="caption-select">
+                <option value="">— Pilih Keterangan —</option>
+                ${optionsHtml}
+            </select>
+            <div class="caption-print">${escHtml(img.caption || "—")}</div>
+        </div>
+    `;
+
+            /* Delete */
+            box.querySelector(".btn-delete").addEventListener("click", () => {
+                images = images.filter(i => i.id !== img.id);
+                render();
+            });
+
+            /* Caption change */
+            const sel = box.querySelector(".caption-select");
+            sel.addEventListener("change", () => {
+                const found = images.find(i => i.id === img.id);
+                if (found) {
+                    found.caption = sel.value;
+                    box.querySelector(".caption-print").textContent = sel.value || "—";
+                }
+            });
+
+            return box;
+        }
+
+        /* ============================================================
+           DRAG & DROP REORDER
+        ============================================================ */
+        function reorder(srcId, tgtId) {
+            const si = images.findIndex(i => i.id === srcId);
+            const ti = images.findIndex(i => i.id === tgtId);
+            if (si < 0 || ti < 0) return;
+            const [moved] = images.splice(si, 1);
+            images.splice(ti, 0, moved);
+            render();
+        }
+
+        /* ============================================================
+           EXPORT PDF — PENDEKATAN HALAMAN PER HALAMAN
+           Menggunakan jsPDF + html2canvas untuk akurasi maksimal
+        ============================================================ */
+        async function exportPDF() {
+            const pages = document.querySelectorAll(".page");
+            if (pages.length === 0) { alert("Belum ada halaman untuk dicetak."); return; }
+
+            const btn = document.getElementById("btnExport");
+            btn.disabled = true;
+            btn.textContent = "⏳ Memproses...";
+
+            /* Sembunyikan kontrol & elemen screen-only sebelum render */
+            const controls = document.getElementById("controls");
+            controls.style.display = "none";
+
+            /* Ganti semua select → teks caption untuk rendering */
+            document.querySelectorAll(".caption-select").forEach(s => s.style.display = "none");
+            document.querySelectorAll(".caption-print").forEach(s => s.style.display = "block");
+            document.querySelectorAll(".btn-delete").forEach(s => s.style.display = "none");
+
+            try {
+                const opt = {
+                    margin: 0,
+                    filename: "Laporan_Instalasi.pdf",
+                    image: { type: "jpeg", quality: 0.95 },
+                    html2canvas: {
+                        scale: 2,
+                        useCORS: true,
+                        logging: false,
+                        windowWidth: 794, /* 210mm @ 96dpi */
+                        scrollY: 0
+                    },
+                    jsPDF: {
+                        unit: "mm",
+                        format: "a4",
+                        orientation: "portrait",
+                        compress: true
+                    },
+                    pagebreak: {
+                        mode: "css",
+                        before: ".page"
+                    }
+                };
+
+                await html2pdf()
+                    .set(opt)
+                    .from(document.getElementById("pdf-wrapper"))
+                    .save();
+
+            } catch (err) {
+                alert("Gagal membuat PDF: " + err.message);
+            }
+
+            /* Kembalikan UI */
+            controls.style.display = "";
+            document.querySelectorAll(".caption-select").forEach(s => s.style.display = "");
+            document.querySelectorAll(".caption-print").forEach(s => s.style.display = "none");
+            document.querySelectorAll(".btn-delete").forEach(s => s.style.display = "");
+            btn.disabled = false;
+            btn.textContent = "⬇ SIMPAN PDF";
+        }
+
+        /* ============================================================
+           UTIL
+        ============================================================ */
+        function escHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        }
+        function escAttr(str) {
+            return str.replace(/"/g, "&quot;");
         }
     </script>
-
 </body>
 
 </html>
